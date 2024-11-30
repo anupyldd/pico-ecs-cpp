@@ -1,4 +1,4 @@
-# C++ wrapper for pico_ecs
+# C++ wrapper for [pico_ecs](https://github.com/empyreanx/pico_headers/blob/main/pico_ecs.h)
 
 This header-only library wraps `pico_ecs` ECS instance into an `EcsInstance` object and implements all its functionality through methods.
 
