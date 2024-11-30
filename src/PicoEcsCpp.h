@@ -2,25 +2,54 @@
 
 #include "pico_ecs.h"
 
+#include <unordered_map>
+#include <typeindex>
+#include <typeinfo>
+#include <algorithm>
+#include <string>
+
+// error handling -----------------------------------------------------
+
 namespace pico_ecs_cpp
 {
 	enum class StatusCode
 	{
-		Success = 0,
-		InitFailure = 1,
-		UnknownError = -1
+		Success,
+		UnknownError,
+
+		InitFail,
+
+		CompExists,
+		CompRegFail
 	};
 
-	inline const char* GetStatusMessage(StatusCode code)
+	inline std::string GetStatusMessage(StatusCode code)
 	{
 		switch (code)
 		{
 		case StatusCode::Success: return "Success";
 
-		case StatusCode::InitFailure: return "Initialization Failure";
+		case StatusCode::InitFail: return "Initialization Failure";
+
+		case StatusCode::CompExists: return "Component Already Registered";
+
+		case StatusCode::CompRegFail: return "Component Registration Failed";
 
 		case StatusCode::UnknownError:
 		default: return "Unknown Error";
+		}
+	}
+
+	template<typename ... Args>
+	std::string FormatString(const std::string& format, Args ... args)
+	{
+		int size_s = std::snprintf(nullptr, 0, format.c_str(), args ...) + 1; 
+		if (size_s > 0)
+		{
+			auto size = static_cast<size_t>(size_s);
+			std::unique_ptr<char[]> buf(new char[size]);
+			std::snprintf(buf.get(), size, format.c_str(), args ...);
+			return std::string(buf.get(), buf.get() + size - 1); 
 		}
 	}
 }
@@ -70,65 +99,137 @@ namespace pico_ecs_cpp
 
 #endif 
 
-#include <memory>
-#include <any>
+// component creation -----------------------------------------------------
+
+#if defined(PICO_ECS_CPP_COMPONENT_MACROS)
+
+#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR(CompName)														\
+	inline void CompName##Constructor (ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)	\
+	{																							\
+		CompName* comp = static_cast<CompName*>(ptr);											\
+		CompName* init = static_cast<CompName*>(args);											\
+		if(init) (*comp) = (*init);																\
+	}
+
+#endif
 
 namespace pico_ecs_cpp
 {
+	// aliases --------------------------------------------------------------
+
 	using Ecs						= ecs_t;
+	using ReturnCode				= ecs_ret_t;
+	
 	using EcsId						= ecs_id_t;
 	using EntityId					= ecs_id_t;
 	using ComponentId				= ecs_id_t;
 	using SystemId					= ecs_id_t;
-	using ConstructorPtr			= ecs_constructor_fn;
-	using DestructorPtr				= ecs_destructor_fn;
-	using ReturnCode				= ecs_ret_t;
-	using SystemFuncPtr				= ecs_system_fn;
-	using SystemAddCallbackPtr		= ecs_added_fn;
-	using SystemRemoveCallbackPtr	= ecs_removed_fn;
+
+	using ComponentCtor				= ecs_constructor_fn;
+	using ComponentDtor				= ecs_destructor_fn;
+	
+	using SystemFunc				= ecs_system_fn;
+	using SystemAddCallback			= ecs_added_fn;
+	using SystemRemoveCallback		= ecs_removed_fn;
+
+	// components -------------------------------------------------------------
+
+	template<typename T>
+	struct Component
+	{
+		T comp;
+		ComponentCtor ctor = nullptr;
+		ComponentDtor dtor = nullptr;
+	};
+
+	// systems -----------------------------------------------------------------
+	
+
+	
+	// ecs instance -------------------------------------------------------------
 
 	class EcsInstance
 	{
 	public:
 		EcsInstance() = default;
-		EcsInstance(size_t entityCount);
-
 		~EcsInstance();
 
+		// initializes an ECS instance
+		EcsInstance(size_t entityCount);
+
+		// initializes an ECS instance
 		StatusCode Init(size_t entityCount);
-		void Close();
+
+		// destroys an ECS instance
+		StatusCode Destroy();
+
+		// removes all entities from the ECS, preserving systems and components
+		StatusCode Reset();
+
+	public:
+
+		// register a single component with optional constructor and destructor
+		template<typename CompType>
+		StatusCode RegisterComponent(ComponentCtor ctor = nullptr, ComponentDtor dtor = nullptr);
 
 	private:
 		Ecs* instance = nullptr;
+
+		std::unordered_map<std::type_index, ComponentId> components;
 	};
 
 	// definitions -----------------------------------------------
 
-	EcsInstance::EcsInstance(size_t entityCount)
+	inline EcsInstance::EcsInstance(size_t entityCount)
 	{
 		instance = ecs_new(entityCount, nullptr);
+		if (!instance) PICO_ECS_CPP_ERROR(StatusCode::InitFail, "Failed to initialize ECS instance");
 	}
 
-	EcsInstance::~EcsInstance()
+	inline EcsInstance::~EcsInstance()
 	{
-		ecs_free(instance);
+		if(ecs_is_not_null(instance)) Destroy();
 	}
 
-	StatusCode EcsInstance::Init(size_t entityCount)
+	inline StatusCode EcsInstance::Init(size_t entityCount)
 	{
 		instance = ecs_new(entityCount, nullptr);
 
 		if (instance)
+		{
 			return StatusCode::Success;
+		}
 		else
 		{
-			PICO_ECS_CPP_ERROR(StatusCode::InitFailure, "Failed to initialize ECS instance");
-			return StatusCode::InitFailure;
+			PICO_ECS_CPP_ERROR(StatusCode::InitFail, "Failed to initialize ECS instance");
+			return StatusCode::InitFail;
 		}
 	}
 
-	void EcsInstance::Close()
+	inline StatusCode EcsInstance::Destroy()
 	{
 		ecs_free(instance);
+		instance = nullptr;
+		return StatusCode::Success;
+	}
+
+	inline StatusCode EcsInstance::Reset()
+	{
+		ecs_reset(instance);
+		return StatusCode::Success;
+	}
+
+	template<typename CompType>
+	inline StatusCode EcsInstance::RegisterComponent(ComponentCtor ctor, ComponentDtor dtor)
+	{
+		for (const auto& comp : components)
+		{
+			if (comp.first == typeid(CompType))
+			{
+				PICO_ECS_CPP_ERROR(StatusCode::CompExists, "Component already exists in this instance");
+			}
+		}
+
+		return StatusCode();
 	}
 }
