@@ -63,6 +63,24 @@ namespace pico_ecs_cpp
 			return std::string(buf.get(), buf.get() + size - 1); 
 		}
 	}
+
+	// aliases --------------------------------------------------------------
+
+	using Ecs						= ecs_t;
+	using ReturnCode				= ecs_ret_t;
+	using EcsDt						= ecs_dt_t;
+	
+	using EcsId						= ecs_id_t;
+	using EntityId					= ecs_id_t;
+	using ComponentId				= ecs_id_t;
+	using SystemId					= ecs_id_t;
+
+	using ComponentCtor				= ecs_constructor_fn;
+	using ComponentDtor				= ecs_destructor_fn;
+	
+	using SystemFunc				= ecs_system_fn;
+	using SystemAddedCb				= ecs_added_fn;
+	using SystemRemovedCb			= ecs_removed_fn;
 }
 
 #if defined(PICO_ECS_CPP_ERRORS_USE_EXCEPTIONS)
@@ -114,41 +132,42 @@ namespace pico_ecs_cpp
 
 #if defined(PICO_ECS_CPP_SHORTHAND_MACROS)
 
-#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR(CompName)												\
-	auto CompName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)
+/*
+does not include function body.
+adds "Constructor" to the name
+*/
+#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR(CtorName)							\
+	pico_ecs_cpp::ComponentCtor CtorName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)					\
 
-#define PICO_ECS_CPP_COMPONENT_DESTRUCTOR(CompName)													\
-	auto CompName##Destructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr)
+/*
+does not include function body.
+adds "Destructor" to the name
+*/
+#define PICO_ECS_CPP_COMPONENT_DESTRUCTOR(DtorName)								\
+	pico_ecs_cpp::ComponentDtor DtorName##Destructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr)
 
-#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(CompName)												\
-	auto CompName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)			\
-	{																								\
-		CompName* comp = static_cast<CompName*>(ptr);												\
-		CompName* init = static_cast<CompName*>(args);												\
-		if(init) (*comp) = (*init);																	\
+/* 
+creates a constructor that accepts an object of type CompName and
+copies its contents into the component.
+adds "Constructor" to the name
+*/
+#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(CtorName)										\
+	pico_ecs_cpp::ComponentCtor CtorName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)					\
+	{																							\
+		CtorName* comp = static_cast<CtorName*>(ptr);											\
+		CtorName* init = static_cast<CtorName*>(args);											\
+		if(init) (*comp) = (*init);																\
 	}
+
+// does not include function body
+#define PICO_ECS_CPP_SYSTEM_FUNCTION(FuncName)									\
+	auto FuncName = [](ecs_t* ecs, ecs_id_t* entities, int entity_count, ecs_dt_t dt, void* udata)
 
 #endif
 
 namespace pico_ecs_cpp
 {
-	// aliases --------------------------------------------------------------
-
-	using Ecs						= ecs_t;
-	using ReturnCode				= ecs_ret_t;
-	using EcsDt						= ecs_dt_t;
 	
-	using EcsId						= ecs_id_t;
-	using EntityId					= ecs_id_t;
-	using ComponentId				= ecs_id_t;
-	using SystemId					= ecs_id_t;
-
-	using ComponentCtor				= ecs_constructor_fn;
-	using ComponentDtor				= ecs_destructor_fn;
-	
-	using SystemFunc				= ecs_system_fn;
-	using SystemAddCallback			= ecs_added_fn;
-	using SystemRemoveCallback		= ecs_removed_fn;
 	
 	// ecs instance -------------------------------------------------------------
 
@@ -188,7 +207,13 @@ namespace pico_ecs_cpp
 
 	public:
 
-
+		template<typename T>
+		StatusCode SystemRegister(
+			const std::string& name,
+			SystemFunc func, 
+			SystemAddedCb add = nullptr, 
+			SystemRemovedCb rem = nullptr,
+			T* udata = nullptr);
 
 	private:
 		Ecs* instance = nullptr;
@@ -272,5 +297,21 @@ namespace pico_ecs_cpp
 	inline CompType* EcsInstance::GetComponent(EntityId id)
 	{
 		return static_cast<CompType*>(ecs_get(instance, id, typeid(CompType)));	
+	}
+
+	template<typename T>
+	inline StatusCode EcsInstance::SystemRegister(const std::string& name, SystemFunc func, SystemAddedCb add, SystemRemovedCb rem, T* udata)
+	{
+		for (const auto& sys : components)
+		{
+			if (sys.first == name)
+			{
+				PICO_ECS_CPP_ERROR(StatusCode::SysExists,
+					FormatString("System %s is already registered", name));
+				return StatusCode::SysExists;
+			}
+		}
+
+		return StatusCode();
 	}
 }
