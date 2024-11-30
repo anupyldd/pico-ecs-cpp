@@ -15,7 +15,7 @@ namespace pico_ecs_cpp
 
 	#include <exception>
 	#include <sstream>
-	#define	PICO_ECS_ERROR(code, msg)					\
+	#define	PICO_ECS_CPP_ERROR(code, msg)				\
 			do											\
 			{											\
 				std::stringstream sstr;					\
@@ -30,17 +30,19 @@ namespace pico_ecs_cpp
 	#define	PICO_ECS_CPP_ERROR(code, msg)												\
 			do																			\
 			{																			\
-				std::cerr << "[PICO_ECS_CPP_ERROR][" << code << "] " << msg << '\n';	\
+				std::cerr << "[PICO_ECS_CPP][" << code << "] " << msg << '\n';			\
 			}																			\
 			while(0)
 
 #elif defined(PICO_ECS_CPP_ERROR_USE_CALLBACK)
 
 	#include <functional>
+	#include <iostream>
 	#include <string>
-	std::function<void(int, const std::string&)> PicoEcsCppErrorHandler =					\
-		[](int code, const std::string& msg)												\
-		{ std::cerr << "[PICO_ECS_CPP_ERROR][" << code << "] " << msg << '\n'; }			\
+	std::function<void(int, const std::string&)> PicoEcsCppErrorHandler =					
+		[](int code, const std::string& msg)												
+		{ std::cerr << "[PICO_ECS_CPP][" << code << "] " << msg << '\n'; };					
+																							
 	#define PICO_ECS_CPP_ERROR(code, msg)													\
 			do																				\
 			{																				\
@@ -56,9 +58,19 @@ namespace pico_ecs_cpp
 
 namespace pico_ecs_cpp
 {
+	using Ecs						= ecs_t;
+	using EcsId						= ecs_id_t;
+	using EntityId					= ecs_id_t;
+	using ComponentId				= ecs_id_t;
+	using SystemId					= ecs_id_t;
+	using ConstructorPtr			= ecs_constructor_fn;
+	using DestructorPtr				= ecs_destructor_fn;
+	using ReturnCode				= ecs_ret_t;
+	using SystemFuncPtr				= ecs_system_fn;
+	using SystemAddCallbackPtr		= ecs_added_fn;
+	using SystemRemoveCallbackPtr	= ecs_removed_fn;
 
-
-	class Ecs
+	class EcsInstance
 	{
 	public:
 
