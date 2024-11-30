@@ -4,11 +4,25 @@
 
 namespace pico_ecs_cpp
 {
-	enum class PicoEcsCppErrorCode
+	enum class StatusCode
 	{
 		Success = 0,
+		InitFailure = 1,
 		UnknownError = -1
 	};
+
+	inline const char* GetStatusMessage(StatusCode code)
+	{
+		switch (code)
+		{
+		case StatusCode::Success: return "Success";
+
+		case StatusCode::InitFailure: return "Initialization Failure";
+
+		case StatusCode::UnknownError:
+		default: return "Unknown Error";
+		}
+	}
 }
 
 #if defined(PICO_ECS_CPP_ERRORS_USE_EXCEPTIONS)
@@ -39,15 +53,15 @@ namespace pico_ecs_cpp
 	#include <functional>
 	#include <iostream>
 	#include <string>
-	std::function<void(int, const std::string&)> PicoEcsCppErrorHandler =					
-		[](int code, const std::string& msg)												
-		{ std::cerr << "[PICO_ECS_CPP][" << code << "] " << msg << '\n'; };					
+	std::function<void(pico_ecs_cpp::StatusCode, const std::string&)> PicoEcsCppErrorHandler =
+		[](pico_ecs_cpp::StatusCode code, const std::string& msg)
+		{ std::cerr << "[PICO_ECS_CPP][" << pico_ecs_cpp::GetStatusMessage(code) << "] " << msg << '\n'; };
 																							
-	#define PICO_ECS_CPP_ERROR(code, msg)													\
-			do																				\
-			{																				\
-				PicoEcsCppErrorHandler(code, msg);											\
-			}																				\
+	#define PICO_ECS_CPP_ERROR(code, msg)														\
+			do																					\
+			{																					\
+				PicoEcsCppErrorHandler(code, msg);												\
+			}																					\
 			while(0)
 
 #else
@@ -55,6 +69,9 @@ namespace pico_ecs_cpp
 	#define	PICO_ECS_CPP_ERROR(code, msg)
 
 #endif 
+
+#include <memory>
+#include <any>
 
 namespace pico_ecs_cpp
 {
@@ -73,8 +90,45 @@ namespace pico_ecs_cpp
 	class EcsInstance
 	{
 	public:
+		EcsInstance() = default;
+		EcsInstance(size_t entityCount);
+
+		~EcsInstance();
+
+		StatusCode Init(size_t entityCount);
+		void Close();
 
 	private:
-
+		Ecs* instance = nullptr;
 	};
+
+	// definitions -----------------------------------------------
+
+	EcsInstance::EcsInstance(size_t entityCount)
+	{
+		instance = ecs_new(entityCount, nullptr);
+	}
+
+	EcsInstance::~EcsInstance()
+	{
+		ecs_free(instance);
+	}
+
+	StatusCode EcsInstance::Init(size_t entityCount)
+	{
+		instance = ecs_new(entityCount, nullptr);
+
+		if (instance)
+			return StatusCode::Success;
+		else
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::InitFailure, "Failed to initialize ECS instance");
+			return StatusCode::InitFailure;
+		}
+	}
+
+	void EcsInstance::Close()
+	{
+		ecs_free(instance);
+	}
 }
