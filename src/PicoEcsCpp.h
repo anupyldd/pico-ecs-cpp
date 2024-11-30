@@ -112,14 +112,20 @@ namespace pico_ecs_cpp
 
 // component creation -----------------------------------------------------
 
-#if defined(PICO_ECS_CPP_COMPONENT_MACROS)
+#if defined(PICO_ECS_CPP_SHORTHAND_MACROS)
 
-#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR(CompName)														\
-	inline void CompName##Constructor (ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)	\
-	{																							\
-		CompName* comp = static_cast<CompName*>(ptr);											\
-		CompName* init = static_cast<CompName*>(args);											\
-		if(init) (*comp) = (*init);																\
+#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR(CompName)												\
+	auto CompName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)
+
+#define PICO_ECS_CPP_COMPONENT_DESTRUCTOR(CompName)													\
+	auto CompName##Destructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr)
+
+#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(CompName)												\
+	auto CompName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)			\
+	{																								\
+		CompName* comp = static_cast<CompName*>(ptr);												\
+		CompName* init = static_cast<CompName*>(args);												\
+		if(init) (*comp) = (*init);																	\
 	}
 
 #endif
@@ -153,10 +159,10 @@ namespace pico_ecs_cpp
 		~EcsInstance();
 
 		// initializes an ECS instance
-		EcsInstance(size_t entityCount);
+		EcsInstance(int entityCount);
 
 		// initializes an ECS instance
-		StatusCode Init(size_t entityCount);
+		StatusCode Init(int entityCount);
 
 		// destroys an ECS instance
 		StatusCode Destroy();
@@ -193,10 +199,9 @@ namespace pico_ecs_cpp
 
 	// definitions -----------------------------------------------
 
-	inline EcsInstance::EcsInstance(size_t entityCount)
+	inline EcsInstance::EcsInstance(int entityCount)
 	{
-		instance = ecs_new(entityCount, nullptr);
-		if (!instance) PICO_ECS_CPP_ERROR(StatusCode::InitFail, "Failed to initialize ECS instance");
+		Init(entityCount);
 	}
 
 	inline EcsInstance::~EcsInstance()
@@ -204,9 +209,15 @@ namespace pico_ecs_cpp
 		if(ecs_is_not_null(instance)) Destroy();
 	}
 
-	inline StatusCode EcsInstance::Init(size_t entityCount)
+	inline StatusCode EcsInstance::Init(int entityCount)
 	{
-		instance = ecs_new(entityCount, nullptr);
+		if (!(entityCount > 0))
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::InitFail, "Invalid entity count");
+			return StatusCode::InitFail;
+		}
+
+		instance = ecs_new(static_cast<size_t>(entityCount), nullptr);
 
 		if (instance)
 		{
@@ -260,6 +271,6 @@ namespace pico_ecs_cpp
 	template<typename CompType>
 	inline CompType* EcsInstance::GetComponent(EntityId id)
 	{
-		return static_cast<CompType*>(ecs_get(instance, id, typeid(CompType)));
+		return static_cast<CompType*>(ecs_get(instance, id, typeid(CompType)));	
 	}
 }
