@@ -6,6 +6,7 @@
 #include <typeindex>
 #include <typeinfo>
 #include <algorithm>
+#include <functional>
 #include <string>
 
 // error handling -----------------------------------------------------
@@ -20,7 +21,11 @@ namespace pico_ecs_cpp
 		InitFail,
 
 		CompExists,
-		CompRegFail
+		CompRegFail,
+
+		SysExists,
+		SysRegFail,
+		SysUpdateFail
 	};
 
 	inline std::string GetStatusMessage(StatusCode code)
@@ -34,6 +39,12 @@ namespace pico_ecs_cpp
 		case StatusCode::CompExists: return "Component Already Registered";
 
 		case StatusCode::CompRegFail: return "Component Registration Failed";
+
+		case StatusCode::SysExists: return "System Already Registered";
+
+		case StatusCode::SysRegFail: return "System Registration Failed";
+
+		case StatusCode::SysUpdateFail: return "System Update Failure";
 
 		case StatusCode::UnknownError:
 		default: return "Unknown Error";
@@ -119,6 +130,7 @@ namespace pico_ecs_cpp
 
 	using Ecs						= ecs_t;
 	using ReturnCode				= ecs_ret_t;
+	using EcsDt						= ecs_dt_t;
 	
 	using EcsId						= ecs_id_t;
 	using EntityId					= ecs_id_t;
@@ -131,20 +143,6 @@ namespace pico_ecs_cpp
 	using SystemFunc				= ecs_system_fn;
 	using SystemAddCallback			= ecs_added_fn;
 	using SystemRemoveCallback		= ecs_removed_fn;
-
-	// components -------------------------------------------------------------
-
-	template<typename T>
-	struct Component
-	{
-		T comp;
-		ComponentCtor ctor = nullptr;
-		ComponentDtor dtor = nullptr;
-	};
-
-	// systems -----------------------------------------------------------------
-	
-
 	
 	// ecs instance -------------------------------------------------------------
 
@@ -166,16 +164,31 @@ namespace pico_ecs_cpp
 		// removes all entities from the ECS, preserving systems and components
 		StatusCode Reset();
 
+		// updates all systems, should be called once per frame
+		StatusCode Update(EcsDt dt = 0.0f);
+
+	public:
+
+		EntityId EntityCreate();
+
 	public:
 
 		// register a single component with optional constructor and destructor
 		template<typename CompType>
-		StatusCode RegisterComponent(ComponentCtor ctor = nullptr, ComponentDtor dtor = nullptr);
+		StatusCode ComponentRegister(ComponentCtor ctor = nullptr, ComponentDtor dtor = nullptr);
+
+		template<typename CompType>
+		CompType* GetComponent(EntityId id);
+
+	public:
+
+
 
 	private:
 		Ecs* instance = nullptr;
 
 		std::unordered_map<std::type_index, ComponentId> components;
+		std::unordered_map<std::string, SystemId> systems;
 	};
 
 	// definitions -----------------------------------------------
@@ -219,17 +232,34 @@ namespace pico_ecs_cpp
 		return StatusCode::Success;
 	}
 
+	inline StatusCode EcsInstance::Update(EcsDt dt)
+	{
+		if (ecs_update_systems(instance, dt))
+			return StatusCode::Success;
+		else 
+			return StatusCode::SysUpdateFail;
+	}
+
 	template<typename CompType>
-	inline StatusCode EcsInstance::RegisterComponent(ComponentCtor ctor, ComponentDtor dtor)
+	inline StatusCode EcsInstance::ComponentRegister(ComponentCtor ctor, ComponentDtor dtor)
 	{
 		for (const auto& comp : components)
 		{
 			if (comp.first == typeid(CompType))
 			{
-				PICO_ECS_CPP_ERROR(StatusCode::CompExists, "Component already exists in this instance");
+				PICO_ECS_CPP_ERROR(StatusCode::CompExists, 
+					FormatString("Component %s is already registered", typeid(CompType).name()));
+				return StatusCode::CompExists;
 			}
 		}
 
-		return StatusCode();
+		components[typeid(CompType)] = ecs_register_component(instance, sizeof(CompType), ctor, dtor);
+		return StatusCode::Success;
+	}
+	
+	template<typename CompType>
+	inline CompType* EcsInstance::GetComponent(EntityId id)
+	{
+		return static_cast<CompType*>(ecs_get(instance, id, typeid(CompType)));
 	}
 }

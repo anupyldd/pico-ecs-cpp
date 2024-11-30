@@ -1,6 +1,7 @@
 
 #define PICO_ECS_IMPLEMENTATION
 #define PICO_ECS_CPP_ERROR_USE_CALLBACK
+#define PIC_ECS_CPP_SERIALIZATION
 
 #include "PicoEcsCpp.h"
 
