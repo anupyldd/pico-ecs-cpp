@@ -161,14 +161,12 @@ adds "Constructor" to the name
 
 // does not include function body
 #define PICO_ECS_CPP_SYSTEM_FUNCTION(FuncName)									\
-	auto FuncName = [](ecs_t* ecs, ecs_id_t* entities, int entity_count, ecs_dt_t dt, void* udata)
+	ecs_ret_t FuncName(ecs_t* ecs, ecs_id_t* entities, int entity_count, ecs_dt_t dt, void* udata)
 
 #endif
 
 namespace pico_ecs_cpp
 {
-	
-	
 	// ecs instance -------------------------------------------------------------
 
 	class EcsInstance
@@ -177,24 +175,41 @@ namespace pico_ecs_cpp
 		EcsInstance() = default;
 		~EcsInstance();
 
-		// initializes an ECS instance
+		// initializes an ecs instance
 		EcsInstance(int entityCount);
 
-		// initializes an ECS instance
+		// initializes an ecs instance
 		StatusCode Init(int entityCount);
 
-		// destroys an ECS instance
+		// destroys an ecs instance
 		StatusCode Destroy();
 
-		// removes all entities from the ECS, preserving systems and components
+		// removes all entities from the ecs, preserving systems and components
 		StatusCode Reset();
 
 		// updates all systems, should be called once per frame
 		StatusCode Update(EcsDt dt = 0.0f);
 
+		// returns pointer to the base ecs instance
+		Ecs* GetInstance() const;
+
 	public:
 
+		// creates a new entity, returns its id
 		EntityId EntityCreate();
+
+		// checks if entity is currently active
+		bool EntityIsReady(EntityId id) const;
+
+		// destroys entity
+		StatusCode EntityDestroy(EntityId id);
+
+		// checks if entity has specified component
+		template<typename CompType>
+		bool EntityHasComponent(EntityId id);
+
+		template<typename CompType>
+		CompType* EntityGetComponent(EntityId id);
 
 	public:
 
@@ -207,13 +222,11 @@ namespace pico_ecs_cpp
 
 	public:
 
-		template<typename T>
 		StatusCode SystemRegister(
 			const std::string& name,
 			SystemFunc func, 
 			SystemAddedCb add = nullptr, 
-			SystemRemovedCb rem = nullptr,
-			T* udata = nullptr);
+			SystemRemovedCb rem = nullptr);
 
 	private:
 		Ecs* instance = nullptr;
@@ -276,17 +289,19 @@ namespace pico_ecs_cpp
 			return StatusCode::SysUpdateFail;
 	}
 
+	inline Ecs* EcsInstance::GetInstance() const
+	{
+		return instance;
+	}
+
 	template<typename CompType>
 	inline StatusCode EcsInstance::ComponentRegister(ComponentCtor ctor, ComponentDtor dtor)
 	{
-		for (const auto& comp : components)
+		if (components.find(typeid(CompType)) != components.end())
 		{
-			if (comp.first == typeid(CompType))
-			{
-				PICO_ECS_CPP_ERROR(StatusCode::CompExists, 
-					FormatString("Component %s is already registered", typeid(CompType).name()));
-				return StatusCode::CompExists;
-			}
+			PICO_ECS_CPP_ERROR(StatusCode::CompExists, 
+				FormatString("Component %s is already registered", typeid(CompType).name()));
+			return StatusCode::CompExists;
 		}
 
 		components[typeid(CompType)] = ecs_register_component(instance, sizeof(CompType), ctor, dtor);
@@ -299,19 +314,45 @@ namespace pico_ecs_cpp
 		return static_cast<CompType*>(ecs_get(instance, id, typeid(CompType)));	
 	}
 
-	template<typename T>
-	inline StatusCode EcsInstance::SystemRegister(const std::string& name, SystemFunc func, SystemAddedCb add, SystemRemovedCb rem, T* udata)
+	inline StatusCode EcsInstance::SystemRegister(const std::string& name, SystemFunc func, SystemAddedCb add, SystemRemovedCb rem)
 	{
-		for (const auto& sys : components)
+		if (systems.find(name) != systems.end())
 		{
-			if (sys.first == name)
-			{
-				PICO_ECS_CPP_ERROR(StatusCode::SysExists,
-					FormatString("System %s is already registered", name));
-				return StatusCode::SysExists;
-			}
+			PICO_ECS_CPP_ERROR(StatusCode::SysExists,
+				FormatString("System %s is already registered", name));
+			return StatusCode::SysExists;
 		}
 
-		return StatusCode();
+		systems[name] = ecs_register_system(instance, func, add, rem, this);
+
+		return StatusCode::Success;
+	}
+
+	inline EntityId EcsInstance::EntityCreate()
+	{
+		return ecs_create(instance);
+	}
+
+	inline bool EcsInstance::EntityIsReady(EntityId id) const
+	{
+		return ecs_is_ready(instance, id);
+	}
+
+	inline StatusCode EcsInstance::EntityDestroy(EntityId id)
+	{
+		ecs_destroy(instance, id);
+		return StatusCode::Success;
+	}
+
+	template<typename CompType>
+	inline bool EcsInstance::EntityHasComponent(EntityId id)
+	{
+		return ecs_has(instance, id, components.at(typeid(CompType)));
+	}
+
+	template<typename CompType>
+	inline CompType* EcsInstance::EntityGetComponent(EntityId id)
+	{
+		return ecs_get(instance, id, typeid(CompType));
 	}
 }
