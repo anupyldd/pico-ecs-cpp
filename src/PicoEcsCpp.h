@@ -63,6 +63,24 @@ namespace pico_ecs_cpp
 			return std::string(buf.get(), buf.get() + size - 1); 
 		}
 	}
+
+	// aliases --------------------------------------------------------------
+
+	using Ecs						= ecs_t;
+	using ReturnCode				= ecs_ret_t;
+	using EcsDt						= ecs_dt_t;
+	
+	using EcsId						= ecs_id_t;
+	using EntityId					= ecs_id_t;
+	using ComponentId				= ecs_id_t;
+	using SystemId					= ecs_id_t;
+
+	using ComponentCtor				= ecs_constructor_fn;
+	using ComponentDtor				= ecs_destructor_fn;
+	
+	using SystemFunc				= ecs_system_fn;
+	using SystemAddedCb				= ecs_added_fn;
+	using SystemRemovedCb			= ecs_removed_fn;
 }
 
 #if defined(PICO_ECS_CPP_ERRORS_USE_EXCEPTIONS)
@@ -112,38 +130,43 @@ namespace pico_ecs_cpp
 
 // component creation -----------------------------------------------------
 
-#if defined(PICO_ECS_CPP_COMPONENT_MACROS)
+#if defined(PICO_ECS_CPP_SHORTHAND_MACROS)
 
-#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR(CompName)														\
-	inline void CompName##Constructor (ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)	\
+/*
+does not include function body.
+adds "Constructor" to the name
+*/
+#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR(CtorName)							\
+	pico_ecs_cpp::ComponentCtor CtorName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)					\
+
+/*
+does not include function body.
+adds "Destructor" to the name
+*/
+#define PICO_ECS_CPP_COMPONENT_DESTRUCTOR(DtorName)								\
+	pico_ecs_cpp::ComponentDtor DtorName##Destructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr)
+
+/* 
+creates a constructor that accepts an object of type CompName and
+copies its contents into the component.
+adds "Constructor" to the name
+*/
+#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(CtorName)										\
+	pico_ecs_cpp::ComponentCtor CtorName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)					\
 	{																							\
-		CompName* comp = static_cast<CompName*>(ptr);											\
-		CompName* init = static_cast<CompName*>(args);											\
+		CtorName* comp = static_cast<CtorName*>(ptr);											\
+		CtorName* init = static_cast<CtorName*>(args);											\
 		if(init) (*comp) = (*init);																\
 	}
+
+// does not include function body
+#define PICO_ECS_CPP_SYSTEM_FUNCTION(FuncName)									\
+	ecs_ret_t FuncName(ecs_t* ecs, ecs_id_t* entities, int entity_count, ecs_dt_t dt, void* udata)
 
 #endif
 
 namespace pico_ecs_cpp
 {
-	// aliases --------------------------------------------------------------
-
-	using Ecs						= ecs_t;
-	using ReturnCode				= ecs_ret_t;
-	using EcsDt						= ecs_dt_t;
-	
-	using EcsId						= ecs_id_t;
-	using EntityId					= ecs_id_t;
-	using ComponentId				= ecs_id_t;
-	using SystemId					= ecs_id_t;
-
-	using ComponentCtor				= ecs_constructor_fn;
-	using ComponentDtor				= ecs_destructor_fn;
-	
-	using SystemFunc				= ecs_system_fn;
-	using SystemAddCallback			= ecs_added_fn;
-	using SystemRemoveCallback		= ecs_removed_fn;
-	
 	// ecs instance -------------------------------------------------------------
 
 	class EcsInstance
@@ -152,24 +175,41 @@ namespace pico_ecs_cpp
 		EcsInstance() = default;
 		~EcsInstance();
 
-		// initializes an ECS instance
-		EcsInstance(size_t entityCount);
+		// initializes an ecs instance
+		EcsInstance(int entityCount);
 
-		// initializes an ECS instance
-		StatusCode Init(size_t entityCount);
+		// initializes an ecs instance
+		StatusCode Init(int entityCount);
 
-		// destroys an ECS instance
+		// destroys an ecs instance
 		StatusCode Destroy();
 
-		// removes all entities from the ECS, preserving systems and components
+		// removes all entities from the ecs, preserving systems and components
 		StatusCode Reset();
 
 		// updates all systems, should be called once per frame
 		StatusCode Update(EcsDt dt = 0.0f);
 
+		// returns pointer to the base ecs instance
+		Ecs* GetInstance() const;
+
 	public:
 
+		// creates a new entity, returns its id
 		EntityId EntityCreate();
+
+		// checks if entity is currently active
+		bool EntityIsReady(EntityId id) const;
+
+		// destroys entity
+		StatusCode EntityDestroy(EntityId id);
+
+		// checks if entity has specified component
+		template<typename CompType>
+		bool EntityHasComponent(EntityId id);
+
+		template<typename CompType>
+		CompType* EntityGetComponent(EntityId id);
 
 	public:
 
@@ -182,7 +222,11 @@ namespace pico_ecs_cpp
 
 	public:
 
-
+		StatusCode SystemRegister(
+			const std::string& name,
+			SystemFunc func, 
+			SystemAddedCb add = nullptr, 
+			SystemRemovedCb rem = nullptr);
 
 	private:
 		Ecs* instance = nullptr;
@@ -193,10 +237,9 @@ namespace pico_ecs_cpp
 
 	// definitions -----------------------------------------------
 
-	inline EcsInstance::EcsInstance(size_t entityCount)
+	inline EcsInstance::EcsInstance(int entityCount)
 	{
-		instance = ecs_new(entityCount, nullptr);
-		if (!instance) PICO_ECS_CPP_ERROR(StatusCode::InitFail, "Failed to initialize ECS instance");
+		Init(entityCount);
 	}
 
 	inline EcsInstance::~EcsInstance()
@@ -204,9 +247,15 @@ namespace pico_ecs_cpp
 		if(ecs_is_not_null(instance)) Destroy();
 	}
 
-	inline StatusCode EcsInstance::Init(size_t entityCount)
+	inline StatusCode EcsInstance::Init(int entityCount)
 	{
-		instance = ecs_new(entityCount, nullptr);
+		if (!(entityCount > 0))
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::InitFail, "Invalid entity count");
+			return StatusCode::InitFail;
+		}
+
+		instance = ecs_new(static_cast<size_t>(entityCount), nullptr);
 
 		if (instance)
 		{
@@ -240,17 +289,19 @@ namespace pico_ecs_cpp
 			return StatusCode::SysUpdateFail;
 	}
 
+	inline Ecs* EcsInstance::GetInstance() const
+	{
+		return instance;
+	}
+
 	template<typename CompType>
 	inline StatusCode EcsInstance::ComponentRegister(ComponentCtor ctor, ComponentDtor dtor)
 	{
-		for (const auto& comp : components)
+		if (components.find(typeid(CompType)) != components.end())
 		{
-			if (comp.first == typeid(CompType))
-			{
-				PICO_ECS_CPP_ERROR(StatusCode::CompExists, 
-					FormatString("Component %s is already registered", typeid(CompType).name()));
-				return StatusCode::CompExists;
-			}
+			PICO_ECS_CPP_ERROR(StatusCode::CompExists, 
+				FormatString("Component %s is already registered", typeid(CompType).name()));
+			return StatusCode::CompExists;
 		}
 
 		components[typeid(CompType)] = ecs_register_component(instance, sizeof(CompType), ctor, dtor);
@@ -260,6 +311,48 @@ namespace pico_ecs_cpp
 	template<typename CompType>
 	inline CompType* EcsInstance::GetComponent(EntityId id)
 	{
-		return static_cast<CompType*>(ecs_get(instance, id, typeid(CompType)));
+		return static_cast<CompType*>(ecs_get(instance, id, typeid(CompType)));	
+	}
+
+	inline StatusCode EcsInstance::SystemRegister(const std::string& name, SystemFunc func, SystemAddedCb add, SystemRemovedCb rem)
+	{
+		if (systems.find(name) != systems.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::SysExists,
+				FormatString("System %s is already registered", name));
+			return StatusCode::SysExists;
+		}
+
+		systems[name] = ecs_register_system(instance, func, add, rem, this);
+
+		return StatusCode::Success;
+	}
+
+	inline EntityId EcsInstance::EntityCreate()
+	{
+		return ecs_create(instance);
+	}
+
+	inline bool EcsInstance::EntityIsReady(EntityId id) const
+	{
+		return ecs_is_ready(instance, id);
+	}
+
+	inline StatusCode EcsInstance::EntityDestroy(EntityId id)
+	{
+		ecs_destroy(instance, id);
+		return StatusCode::Success;
+	}
+
+	template<typename CompType>
+	inline bool EcsInstance::EntityHasComponent(EntityId id)
+	{
+		return ecs_has(instance, id, components.at(typeid(CompType)));
+	}
+
+	template<typename CompType>
+	inline CompType* EcsInstance::EntityGetComponent(EntityId id)
+	{
+		return ecs_get(instance, id, typeid(CompType));
 	}
 }

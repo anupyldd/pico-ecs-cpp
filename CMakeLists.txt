@@ -22,7 +22,7 @@ FetchContent_MakeAvailable(picoheaders)
 set(SRCS
 
 src/PicoEcsCpp.h
-src/Example.cpp
+src/Tests.cpp
 
 )
 
