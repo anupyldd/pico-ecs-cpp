@@ -2,6 +2,8 @@
 
 This header-only library wraps `pico_ecs` ECS instance into an `EcsInstance` object and implements all its functionality through methods.
 
+Each `EcsInstance` holds its own set of component and system IDs, stored in maps. Components are associated with their `std::type_index`, while systems are associated with user-provided `std::string` names.
+
 ## Error handling
 
 You can configure the error-handling mechanism by defining an appropriate macro *before* including the header. The available options are:

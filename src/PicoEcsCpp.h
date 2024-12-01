@@ -22,9 +22,12 @@ namespace pico_ecs_cpp
 
 		CompExists,
 		CompRegFail,
+		CompNotReg,
+		CompGetFail,
 
 		SysExists,
 		SysRegFail,
+		SysNotReg,
 		SysUpdateFail
 	};
 
@@ -40,9 +43,15 @@ namespace pico_ecs_cpp
 
 		case StatusCode::CompRegFail: return "Component Registration Failed";
 
+		case StatusCode::CompNotReg: return "Component Not Registered";
+
+		case StatusCode::CompGetFail: return "Component Get Failure";
+
 		case StatusCode::SysExists: return "System Already Registered";
 
 		case StatusCode::SysRegFail: return "System Registration Failed";
+
+		case StatusCode::SysNotReg: return "System Not Registered";
 
 		case StatusCode::SysUpdateFail: return "System Update Failure";
 
@@ -161,6 +170,7 @@ adds "Constructor" to the name
 
 // does not include function body
 #define PICO_ECS_CPP_SYSTEM_FUNCTION(FuncName)									\
+	const std::string FuncName##Name(#FuncName);								\
 	ecs_ret_t FuncName(ecs_t* ecs, ecs_id_t* entities, int entity_count, ecs_dt_t dt, void* udata)
 
 #endif
@@ -227,6 +237,16 @@ namespace pico_ecs_cpp
 			SystemFunc func, 
 			SystemAddedCb add = nullptr, 
 			SystemRemovedCb rem = nullptr);
+
+		template<typename CompType>
+		StatusCode SystemRequire(const std::string& sysName);
+
+		template<typename CompType>
+		StatusCode SystemExclude(const std::string& sysName);
+
+		StatusCode SystemEnable(const std::string& sysName);
+
+		StatusCode SystemDisable(const std::string& sysName);
 
 	private:
 		Ecs* instance = nullptr;
@@ -300,7 +320,7 @@ namespace pico_ecs_cpp
 		if (components.find(typeid(CompType)) != components.end())
 		{
 			PICO_ECS_CPP_ERROR(StatusCode::CompExists, 
-				FormatString("Component %s is already registered", typeid(CompType).name()));
+				FormatString("Component [%s] is already registered", typeid(CompType).name()));
 			return StatusCode::CompExists;
 		}
 
@@ -319,12 +339,78 @@ namespace pico_ecs_cpp
 		if (systems.find(name) != systems.end())
 		{
 			PICO_ECS_CPP_ERROR(StatusCode::SysExists,
-				FormatString("System %s is already registered", name));
+				FormatString("System [%s] is already registered", name));
 			return StatusCode::SysExists;
 		}
 
 		systems[name] = ecs_register_system(instance, func, add, rem, this);
 
+		return StatusCode::Success;
+	}
+
+	template<typename CompType>
+	inline StatusCode EcsInstance::SystemRequire(const std::string& sysName)
+	{
+		if (systems.find(sysName) == systems.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::SysNotReg,
+				FormatString("Name [%s] is not associated with any registered system", sysName));
+			return StatusCode::SysNotReg;
+		}
+		if (components.find(typeid(CompType)) == components.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::CompNotReg,
+				FormatString("Component of type [%s] is not registered", typeid(CompType).name()));
+			return StatusCode::CompNotReg;
+		}
+
+		ecs_require_component(instance, systems.at(sysName), components.at(typeid(CompType)));
+		return StatusCode::Success;
+	}
+
+	template<typename CompType>
+	inline StatusCode EcsInstance::SystemExclude(const std::string& sysName)
+	{
+		if (systems.find(sysName) == systems.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::SysNotReg,
+				FormatString("Name [%s] is not associated with any registered system", sysName));
+			return StatusCode::SysNotReg;
+		}
+		if (components.find(typeid(CompType)) == components.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::CompNotReg,
+				FormatString("Component of type [%s] is not registered", typeid(CompType).name()));
+			return StatusCode::CompNotReg;
+		}
+
+		ecs_exclude_component(instance, systems.at(sysName), components.at(typeid(CompType)));
+		return StatusCode::Success;
+	}
+
+	inline StatusCode EcsInstance::SystemEnable(const std::string& sysName)
+	{
+		if (systems.find(sysName) == systems.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::SysNotReg,
+				FormatString("Name [%s] is not associated with any registered system", sysName));
+			return StatusCode::SysNotReg;
+		}
+
+		ecs_enable_system(instance, systems.at(sysName));
+		return StatusCode::Success;
+	}
+
+	inline StatusCode EcsInstance::SystemDisable(const std::string& sysName)
+	{
+		if (systems.find(sysName) == systems.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::SysNotReg,
+				FormatString("Name [%s] is not associated with any registered system", sysName));
+			return StatusCode::SysNotReg;
+		}
+
+		ecs_disable_system(instance, systems.at(sysName));
 		return StatusCode::Success;
 	}
 
@@ -353,6 +439,13 @@ namespace pico_ecs_cpp
 	template<typename CompType>
 	inline CompType* EcsInstance::EntityGetComponent(EntityId id)
 	{
-		return ecs_get(instance, id, typeid(CompType));
+		CompType* compPtr = static_cast<CompType*>(ecs_get(instance, id, components.at(typeid(CompType))));
+		if (!compPtr)
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::CompGetFail,
+				FormatString("Failed to get component of type [%s] from entity [%i]", typeid(CompType).name(), id));
+			return nullptr;
+		}
+		return compPtr;
 	}
 }
