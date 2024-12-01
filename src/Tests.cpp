@@ -9,9 +9,9 @@
 #include <iostream>
 #include <string>
 
-void TestTitle(const std::string& title)
+void Test(const std::string& title)
 {
-	std::cout << ">>> " << title << " -------------\n";
+	std::cout << "\n>>> " << title << " -------------\n";
 }
 
 void Instance(int i)
@@ -106,7 +106,7 @@ int main()
 	* should output 1 error, when trying to initialize with negative number
 	* other inits should be silent
 	*/
-	TestTitle("Instance initialization");
+	Test("Instance initialization");
 	Instance(1);
 	assert(ecs1.Init(-1) == StatusCode::InitFail);
 	assert(ecs1.Init(100) == StatusCode::Success);
@@ -118,7 +118,7 @@ int main()
 	* should output 1 error when trying to register Transform for the 2nd time
 	* other registrations should be silent
 	*/
-	TestTitle("Component registration");
+	Test("Component registration");
 	Instance(1);
 	assert(ecs1.ComponentRegister<Transform>(TransformConstructor) == StatusCode::Success);
 	assert(ecs1.ComponentRegister<Transform>(TransformConstructor) == StatusCode::CompExists);
@@ -134,7 +134,7 @@ int main()
 	* should output 1 error when trying to register ComponentPrintSystem for the 2nd time
 	* other registrations should be silent
 	*/
-	TestTitle("System registration");
+	Test("System registration");
 	Instance(1);
 	assert(ecs1.SystemRegister(ComponentPrintSystemName, ComponentPrintSystem) == StatusCode::Success);
 	assert(ecs1.SystemRegister(ComponentPrintSystemName, ComponentPrintSystem) == StatusCode::SysExists);
@@ -146,7 +146,7 @@ int main()
 	* should output 4 errors: when trying to require/exclude unregistered component
 	* and when trying to register/exclude using unregistered system
 	*/
-	TestTitle("System component require/exclude");
+	Test("System component require/exclude");
 	Instance(1);
 	assert(ecs1.SystemRequire<Transform>(ComponentPrintSystemName) == StatusCode::Success);
 	assert(ecs1.SystemRequire<Velocity>(ComponentPrintSystemName) == StatusCode::Success);
@@ -165,9 +165,25 @@ int main()
 	assert(ecs2.SystemExclude<UnregisteredComp>(MoveSystemName) == StatusCode::CompNotReg);
 
 	/*
+	* should print 2 errors when trying to enable/disable unregistered system
+	*/
+	Test("System enable/disable");
+	Instance(1);
+	assert(ecs1.SystemDisable(ComponentPrintSystemName) == StatusCode::Success);
+	assert(ecs1.SystemEnable(ComponentPrintSystemName) == StatusCode::Success);
+
+	assert(ecs1.SystemEnable(UnregisteredSystemName) == StatusCode::SysNotReg);
+
+	Instance(2);
+	assert(ecs2.SystemDisable(MoveSystemName) == StatusCode::Success);
+	assert(ecs2.SystemEnable(MoveSystemName) == StatusCode::Success);
+			  
+	assert(ecs2.SystemDisable(UnregisteredSystemName) == StatusCode::SysNotReg);
+
+	/*
 	* should print values of all entities and 
 	*/
-	TestTitle("System update");
+	Test("System update");
 	Instance(1);
 	ecs1.Update();
 
@@ -177,7 +193,7 @@ int main()
 	/*
 	* should be silent
 	*/
-	TestTitle("Instance destruction");
+	Test("Instance destruction");
 	Instance(1);
 	assert(ecs1.Destroy() == StatusCode::Success);
 	Instance(2);

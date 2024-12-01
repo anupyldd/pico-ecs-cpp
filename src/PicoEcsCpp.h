@@ -244,6 +244,10 @@ namespace pico_ecs_cpp
 		template<typename CompType>
 		StatusCode SystemExclude(const std::string& sysName);
 
+		StatusCode SystemEnable(const std::string& sysName);
+
+		StatusCode SystemDisable(const std::string& sysName);
+
 	private:
 		Ecs* instance = nullptr;
 
@@ -330,6 +334,20 @@ namespace pico_ecs_cpp
 		return static_cast<CompType*>(ecs_get(instance, id, typeid(CompType)));	
 	}
 
+	inline StatusCode EcsInstance::SystemRegister(const std::string& name, SystemFunc func, SystemAddedCb add, SystemRemovedCb rem)
+	{
+		if (systems.find(name) != systems.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::SysExists,
+				FormatString("System [%s] is already registered", name));
+			return StatusCode::SysExists;
+		}
+
+		systems[name] = ecs_register_system(instance, func, add, rem, this);
+
+		return StatusCode::Success;
+	}
+
 	template<typename CompType>
 	inline StatusCode EcsInstance::SystemRequire(const std::string& sysName)
 	{
@@ -370,17 +388,29 @@ namespace pico_ecs_cpp
 		return StatusCode::Success;
 	}
 
-	inline StatusCode EcsInstance::SystemRegister(const std::string& name, SystemFunc func, SystemAddedCb add, SystemRemovedCb rem)
+	inline StatusCode EcsInstance::SystemEnable(const std::string& sysName)
 	{
-		if (systems.find(name) != systems.end())
+		if (systems.find(sysName) == systems.end())
 		{
-			PICO_ECS_CPP_ERROR(StatusCode::SysExists,
-				FormatString("System [%s] is already registered", name));
-			return StatusCode::SysExists;
+			PICO_ECS_CPP_ERROR(StatusCode::SysNotReg,
+				FormatString("Name [%s] is not associated with any registered system", sysName));
+			return StatusCode::SysNotReg;
 		}
 
-		systems[name] = ecs_register_system(instance, func, add, rem, this);
+		ecs_enable_system(instance, systems.at(sysName));
+		return StatusCode::Success;
+	}
 
+	inline StatusCode EcsInstance::SystemDisable(const std::string& sysName)
+	{
+		if (systems.find(sysName) == systems.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::SysNotReg,
+				FormatString("Name [%s] is not associated with any registered system", sysName));
+			return StatusCode::SysNotReg;
+		}
+
+		ecs_disable_system(instance, systems.at(sysName));
 		return StatusCode::Success;
 	}
 
