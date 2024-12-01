@@ -86,8 +86,13 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(MoveSystem)
 			Transform* tr = instance->EntityGetComponent<Transform>(entities[i]);
 			Velocity* vel = instance->EntityGetComponent<Velocity>(entities[i]);
 
+			std::cout << "- Entity " << entities[i] << ": ";
+			std::cout << "was: " << tr->x << " - " << tr->y;
+
 			tr->x += vel->x;
 			tr->y += vel->y;
+
+			std::cout << " | now: " << tr->x << " - " << tr->y << '\n';
 		}
 	}
 	return 1;
@@ -215,7 +220,7 @@ int main()
 	}
 
 	/*
-	* should 
+	* should be silent
 	*/
 	Test("Entity add/get component");
 	Instance(1);
@@ -246,14 +251,21 @@ int main()
 	Instance(2);
 	for (size_t i = 0; i < entities.size(); ++i)
 	{
-		std::stringstream sstr("entityname");
-		sstr << i;
-		Name nm{ sstr.str() };
-		assert(ecs2.EntityAddComponent<Name>(entities[i], &nm) == StatusCode::Success);
+		if (i % 2 == 0)
+		{
+			Name nm{ "some name" };
+			assert(ecs2.EntityAddComponent<Name>(entities[i], &nm) == StatusCode::Success);
+		}
+		Transform tr{ 0.0f, 0.0f };
+		Velocity vel{ (float)i, (float)i };
+		assert(ecs2.EntityAddComponent<Transform>(entities[i], &tr) == StatusCode::Success);
+		assert(ecs2.EntityAddComponent<Velocity>(entities[i], &vel) == StatusCode::Success);
 	}
 
 	/*
-	* should print values of all entities and 
+	* should print what systems are outputting
+	* entity components for the first
+	* transform changes for the second
 	*/
 	Test("System update");
 	Instance(1);
