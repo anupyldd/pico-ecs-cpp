@@ -67,7 +67,7 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(ComponentPrintSystem)
 					velX = vel->x,
 					velY = vel->y;
 			std::string nm = name->name;
-
+			
 			std::cout << FormatString("- Entity %i:\nTransform: %f, %f\nVelocity: %f, %f\nName: %s\n",
 				entities[i], trX, trY, velX, velY, nm.c_str());
 		}
@@ -222,14 +222,15 @@ int main()
 	/*
 	* should be silent
 	*/
-	Test("Entity add/get component");
+	Test("Entity add/get/remove component");
 	Instance(1);
 	Transform tr1{ 1.1f, 1.1f };
 	Velocity vel1{ 1.1f, 1.1f };
 	Name nm1{ "e1 name" };
-	assert(ecs1.EntityAddComponent<Transform>(e1, &tr1) == StatusCode::Success);
-	assert(ecs1.EntityAddComponent<Velocity>(e1, &vel1) == StatusCode::Success);
-	assert(ecs1.EntityAddComponent<Name>(e1, &nm1) == StatusCode::Success);
+	assert(ecs1.EntityAddComponent<Transform>(e1, &tr1));
+	assert(ecs1.EntityAddComponent<Velocity>(e1, &vel1));
+	assert(ecs1.EntityAddComponent<Name>(e1, &nm1));
+
 	assert(ecs1.EntityGetComponent<Transform>(e1));
 	assert(ecs1.EntityGetComponent<Velocity>(e1));
 	assert(ecs1.EntityGetComponent<Name>(e1));
@@ -237,16 +238,18 @@ int main()
 	Transform tr2{ 2.2f, 2.2f };
 	Velocity vel2{ 2.2f, 2.2f };
 	Name nm2{ "e2 name" };
-	assert(ecs1.EntityAddComponent<Transform>(e2, &tr2) == StatusCode::Success);
-	assert(ecs1.EntityAddComponent<Velocity>(e2, &vel2) == StatusCode::Success);
-	assert(ecs1.EntityAddComponent<Name>(e2, &nm2) == StatusCode::Success);
+	assert(ecs1.EntityAddComponent<Transform>(e2, &tr2));
+	assert(ecs1.EntityAddComponent<Velocity>(e2, &vel2));
+	assert(ecs1.EntityAddComponent<Name>(e2, &nm2));
 
 	Transform tr3{ 3.3f, 3.3f };
 	Velocity vel3{ 3.3f, 3.3f };
 	Name nm3{ "e3 name" };
-	assert(ecs1.EntityAddComponent<Transform>(e3, &tr3) == StatusCode::Success);
-	assert(ecs1.EntityAddComponent<Velocity>(e3, &vel3) == StatusCode::Success);
-	assert(ecs1.EntityAddComponent<Name>(e3, &nm3) == StatusCode::Success);
+	assert(ecs1.EntityAddComponent<Transform>(e3, &tr3));
+	assert(ecs1.EntityAddComponent<Velocity>(e3, &vel3));
+	assert(ecs1.EntityAddComponent<Name>(e3, &nm3));
+	
+	assert(ecs1.EntityRemoveComponent<Transform>(e3) == StatusCode::Success);
 
 	Instance(2);
 	for (size_t i = 0; i < entities.size(); ++i)
@@ -254,12 +257,12 @@ int main()
 		if (i % 2 == 0)
 		{
 			Name nm{ "some name" };
-			assert(ecs2.EntityAddComponent<Name>(entities[i], &nm) == StatusCode::Success);
+			assert(ecs2.EntityAddComponent<Name>(entities[i], &nm));
 		}
 		Transform tr{ 0.0f, 0.0f };
 		Velocity vel{ (float)i, (float)i };
-		assert(ecs2.EntityAddComponent<Transform>(entities[i], &tr) == StatusCode::Success);
-		assert(ecs2.EntityAddComponent<Velocity>(entities[i], &vel) == StatusCode::Success);
+		assert(ecs2.EntityAddComponent<Transform>(entities[i], &tr));
+		assert(ecs2.EntityAddComponent<Velocity>(entities[i], &vel));
 	}
 
 	/*
@@ -269,6 +272,7 @@ int main()
 	*/
 	Test("System update");
 	Instance(1);
+	ecs1.Update();
 	ecs1.Update();
 
 	Instance(2);

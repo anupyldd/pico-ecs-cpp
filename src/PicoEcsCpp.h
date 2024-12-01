@@ -222,8 +222,26 @@ namespace pico_ecs_cpp
 		template<typename CompType>
 		CompType* EntityGetComponent(EntityId id);
 
+		// adds a component to the entity, returns pointer to added component
 		template<typename CompType>
-		StatusCode EntityAddComponent(EntityId id, void* args = nullptr);
+		CompType* EntityAddComponent(EntityId id, void* args = nullptr);
+
+		// removes specified component from the entity
+		template<typename CompType>
+		StatusCode EntityRemoveComponent(EntityId id);
+
+		/*
+		* queues an entity for destruction at the end of system execution
+		* queued entities are destroyed after the curent iteration
+		*/
+		StatusCode EntityQueueDestroy(EntityId id);
+
+		/*
+		* queues a component for removable
+		* queued entity/component pairs that will be deleted after the current system returns
+		*/
+		template<typename CompType>
+		StatusCode EntityQueueRemoveComponent(EntityId id);
 
 	public:
 
@@ -450,7 +468,21 @@ namespace pico_ecs_cpp
 	}
 
 	template<typename CompType>
-	inline StatusCode EcsInstance::EntityAddComponent(EntityId id, void* args)
+	inline CompType* EcsInstance::EntityAddComponent(EntityId id, void* args)
+	{
+		if (components.find(typeid(CompType)) == components.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::CompNotReg,
+				FormatString("Component of type [%s] is not registered", typeid(CompType).name()));
+			return nullptr;
+		}
+
+		return static_cast<CompType*>(
+			ecs_add(instance, id, components.at(typeid(CompType)), std::move(args)));
+	}
+
+	template<typename CompType>
+	inline StatusCode EcsInstance::EntityRemoveComponent(EntityId id)
 	{
 		if (components.find(typeid(CompType)) == components.end())
 		{
@@ -459,8 +491,29 @@ namespace pico_ecs_cpp
 			return StatusCode::CompNotReg;
 		}
 
-		ecs_add(instance, id, components.at(typeid(CompType)), std::move(args));
+		ecs_remove(instance, id, components.at(typeid(CompType)));
 
+		return StatusCode::Success;
+	}
+
+	inline StatusCode EcsInstance::EntityQueueDestroy(EntityId id)
+	{
+		ecs_queue_destroy(instance, id);
+		return StatusCode::Success;
+	}
+
+	template<typename CompType>
+	inline StatusCode EcsInstance::EntityQueueRemoveComponent(EntityId id)
+	{
+		if (components.find(typeid(CompType)) == components.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::CompNotReg,
+				FormatString("Component of type [%s] is not registered", typeid(CompType).name()));
+			return StatusCode::CompNotReg;
+		}
+
+		ecs_queue_remove(instance, id, components.at(typeid(CompType)));
+		
 		return StatusCode::Success;
 	}
 }
