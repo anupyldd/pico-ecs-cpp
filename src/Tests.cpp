@@ -8,6 +8,8 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
+#include <sstream>
 
 void Test(const std::string& title)
 {
@@ -57,9 +59,16 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(ComponentPrintSystem)
 			Velocity* vel = instance->EntityGetComponent<Velocity>(entities[i]);
 			Name* name = instance->EntityGetComponent<Name>(entities[i]);
 
-			std::cout << FormatString("Entity %i:\nTransform: %f, %f\nVelocity: %f, %f\nName: %s",
-				tr->x, tr->y, vel->x, vel->y, name->name);
+			float	trX = tr->x, 
+					trY = tr->y,
+					velX = vel->x,
+					velY = vel->y;
+			std::string nm = name->name;
+			
+			std::cout << FormatString("- Entity %i:\nTransform: %f, %f\nVelocity: %f, %f\nName: %s\n",
+				entities[i], trX, trY, velX, velY, nm.c_str());
 		}
+		return 0;
 	}
 	return 1;
 };
@@ -75,9 +84,15 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(MoveSystem)
 			Transform* tr = instance->EntityGetComponent<Transform>(entities[i]);
 			Velocity* vel = instance->EntityGetComponent<Velocity>(entities[i]);
 
+			std::cout << "- Entity " << entities[i] << ": ";
+			std::cout << "was: " << tr->x << " - " << tr->y;
+
 			tr->x += vel->x;
 			tr->y += vel->y;
+
+			std::cout << " | now: " << tr->x << " - " << tr->y << '\n';
 		}
+		return 0;
 	}
 	return 1;
 }
@@ -181,10 +196,82 @@ int main()
 	assert(ecs2.SystemDisable(UnregisteredSystemName) == StatusCode::SysNotReg);
 
 	/*
-	* should print values of all entities and 
+	* should be silent
+	*/
+	Test("Entity creation/destruction");
+	Instance(1);
+	EntityId e1 = ecs1.EntityCreate();
+	EntityId e2 = ecs1.EntityCreate();
+	EntityId e3 = ecs1.EntityCreate();
+	assert(ecs1.EntityIsReady(e1) && ecs1.EntityIsReady(e2) && ecs1.EntityIsReady(e3));
+
+	ecs1.EntityDestroy(e1);
+	assert(!ecs1.EntityIsReady(e1));
+
+	e1 = ecs1.EntityCreate();
+	assert(ecs1.EntityIsReady(e1));
+
+	Instance(2);
+	std::vector<EntityId> entities;
+	for (size_t i = 0; i < 10; ++i)
+	{
+		entities.push_back(ecs2.EntityCreate());
+	}
+
+	/*
+	* should be silent
+	*/
+	Test("Entity add/get/remove component");
+	Instance(1);
+	Transform tr1{ 1.1f, 1.1f };
+	Velocity vel1{ 1.1f, 1.1f };
+	Name nm1{ "e1 name" };
+	assert(ecs1.EntityAddComponent<Transform>(e1, &tr1));
+	assert(ecs1.EntityAddComponent<Velocity>(e1, &vel1));
+	assert(ecs1.EntityAddComponent<Name>(e1, &nm1));
+
+	assert(ecs1.EntityGetComponent<Transform>(e1));
+	assert(ecs1.EntityGetComponent<Velocity>(e1));
+	assert(ecs1.EntityGetComponent<Name>(e1));
+
+	Transform tr2{ 2.2f, 2.2f };
+	Velocity vel2{ 2.2f, 2.2f };
+	Name nm2{ "e2 name" };
+	assert(ecs1.EntityAddComponent<Transform>(e2, &tr2));
+	assert(ecs1.EntityAddComponent<Velocity>(e2, &vel2));
+	assert(ecs1.EntityAddComponent<Name>(e2, &nm2));
+
+	Transform tr3{ 3.3f, 3.3f };
+	Velocity vel3{ 3.3f, 3.3f };
+	Name nm3{ "e3 name" };
+	assert(ecs1.EntityAddComponent<Transform>(e3, &tr3));
+	assert(ecs1.EntityAddComponent<Velocity>(e3, &vel3));
+	assert(ecs1.EntityAddComponent<Name>(e3, &nm3));
+	
+	assert(ecs1.EntityRemoveComponent<Transform>(e3) == StatusCode::Success);
+
+	Instance(2);
+	for (size_t i = 0; i < entities.size(); ++i)
+	{
+		if (i % 2 == 0)
+		{
+			Name nm{ "some name" };
+			assert(ecs2.EntityAddComponent<Name>(entities[i], &nm));
+		}
+		Transform tr{ 0.0f, 0.0f };
+		Velocity vel{ (float)i, (float)i };
+		assert(ecs2.EntityAddComponent<Transform>(entities[i], &tr));
+		assert(ecs2.EntityAddComponent<Velocity>(entities[i], &vel));
+	}
+
+	/*
+	* should print what systems are outputting
+	* entity components for the first
+	* transform changes for the second
 	*/
 	Test("System update");
 	Instance(1);
+	ecs1.Update();
 	ecs1.Update();
 
 	Instance(2);
