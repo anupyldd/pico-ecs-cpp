@@ -8,6 +8,8 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
+#include <sstream>
 
 void Test(const std::string& title)
 {
@@ -25,6 +27,9 @@ using namespace pico_ecs_cpp;
 
 struct Transform
 {
+	//Transform() = default;
+	//Transform(float x, float y) :x(x), y(y) { };
+
 	float x, y;
 };
 PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(Transform);
@@ -57,8 +62,14 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(ComponentPrintSystem)
 			Velocity* vel = instance->EntityGetComponent<Velocity>(entities[i]);
 			Name* name = instance->EntityGetComponent<Name>(entities[i]);
 
-			std::cout << FormatString("Entity %i:\nTransform: %f, %f\nVelocity: %f, %f\nName: %s",
-				tr->x, tr->y, vel->x, vel->y, name->name);
+			float	trX = tr->x, 
+					trY = tr->y,
+					velX = vel->x,
+					velY = vel->y;
+			std::string nm = name->name;
+
+			std::cout << FormatString("- Entity %i:\nTransform: %f, %f\nVelocity: %f, %f\nName: %s\n",
+				entities[i], trX, trY, velX, velY, nm.c_str());
 		}
 	}
 	return 1;
@@ -197,9 +208,48 @@ int main()
 	assert(ecs1.EntityIsReady(e1));
 
 	Instance(2);
+	std::vector<EntityId> entities;
 	for (size_t i = 0; i < 10; ++i)
 	{
-		ecs2.EntityCreate();
+		entities.push_back(ecs2.EntityCreate());
+	}
+
+	/*
+	* should 
+	*/
+	Test("Entity add/get component");
+	Instance(1);
+	Transform tr1{ 1.1f, 1.1f };
+	Velocity vel1{ 1.1f, 1.1f };
+	Name nm1{ "e1 name" };
+	assert(ecs1.EntityAddComponent<Transform>(e1, &tr1) == StatusCode::Success);
+	assert(ecs1.EntityAddComponent<Velocity>(e1, &vel1) == StatusCode::Success);
+	assert(ecs1.EntityAddComponent<Name>(e1, &nm1) == StatusCode::Success);
+	assert(ecs1.EntityGetComponent<Transform>(e1));
+	assert(ecs1.EntityGetComponent<Velocity>(e1));
+	assert(ecs1.EntityGetComponent<Name>(e1));
+
+	Transform tr2{ 2.2f, 2.2f };
+	Velocity vel2{ 2.2f, 2.2f };
+	Name nm2{ "e2 name" };
+	assert(ecs1.EntityAddComponent<Transform>(e2, &tr2) == StatusCode::Success);
+	assert(ecs1.EntityAddComponent<Velocity>(e2, &vel2) == StatusCode::Success);
+	assert(ecs1.EntityAddComponent<Name>(e2, &nm2) == StatusCode::Success);
+
+	Transform tr3{ 3.3f, 3.3f };
+	Velocity vel3{ 3.3f, 3.3f };
+	Name nm3{ "e3 name" };
+	assert(ecs1.EntityAddComponent<Transform>(e3, &tr3) == StatusCode::Success);
+	assert(ecs1.EntityAddComponent<Velocity>(e3, &vel3) == StatusCode::Success);
+	assert(ecs1.EntityAddComponent<Name>(e3, &nm3) == StatusCode::Success);
+
+	Instance(2);
+	for (size_t i = 0; i < entities.size(); ++i)
+	{
+		std::stringstream sstr("entityname");
+		sstr << i;
+		Name nm{ sstr.str() };
+		assert(ecs2.EntityAddComponent<Name>(entities[i], &nm) == StatusCode::Success);
 	}
 
 	/*

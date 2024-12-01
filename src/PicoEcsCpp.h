@@ -223,7 +223,7 @@ namespace pico_ecs_cpp
 		CompType* EntityGetComponent(EntityId id);
 
 		template<typename CompType>
-		StatusCode EntityAddComponent(EntityId id, void* args);
+		StatusCode EntityAddComponent(EntityId id, void* args = nullptr);
 
 	public:
 
@@ -459,7 +459,7 @@ namespace pico_ecs_cpp
 			return StatusCode::CompNotReg;
 		}
 
-		ecs_add(instance, id, components.at(typeid(CompType)), args);
+		ecs_add(instance, id, components.at(typeid(CompType)), std::move(args));
 
 		return StatusCode::Success;
 	}
