@@ -27,9 +27,6 @@ using namespace pico_ecs_cpp;
 
 struct Transform
 {
-	//Transform() = default;
-	//Transform(float x, float y) :x(x), y(y) { };
-
 	float x, y;
 };
 PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(Transform);
@@ -71,6 +68,7 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(ComponentPrintSystem)
 			std::cout << FormatString("- Entity %i:\nTransform: %f, %f\nVelocity: %f, %f\nName: %s\n",
 				entities[i], trX, trY, velX, velY, nm.c_str());
 		}
+		return 0;
 	}
 	return 1;
 };
@@ -94,6 +92,7 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(MoveSystem)
 
 			std::cout << " | now: " << tr->x << " - " << tr->y << '\n';
 		}
+		return 0;
 	}
 	return 1;
 }

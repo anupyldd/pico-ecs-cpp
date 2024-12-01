@@ -22,6 +22,104 @@ You can configure the error-handling mechanism by defining an appropriate macro 
 
 Regardless of the selected error-handling option, __most methods return status codes__, so you can always rely on them for error handling if you choose to disable other mechanisms.
 
+## Additional configuration macros
+
+- **`PICO_ECS_CPP_SHORTHAND_MACROS`**  
+  Access the following macros:
+
+    -  **`PICO_ECS_CPP_COMPONENT_CONSTRUCTOR`**
+    Declare a constructor for specified component. Does not include the function body.
+
+    - **`PICO_ECS_CPP_COMPONENT_DESTRUCTOR`**
+    Declare a destructor for specified component. Does not include the function body.
+
+    - **`PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY`**
+    Define a constructor for the specified component that accepts an object of the component type and copies it into the component itself. Includes the function body.
+
+    - **`PICO_ECS_CPP_SYSTEM_FUNCTION`**
+    Declare a system function. Does not include the function body.
+
+## Example
+
+```cpp
+// needed for pico_ecs
+#define PICO_ECS_IMPLEMENTATION
+
+// wrapper configuration
+#define PICO_ECS_CPP_ERROR_USE_CALLBACK
+#define PICO_ECS_CPP_SHORTHAND_MACROS
+
+#include "PicoEcsCpp.h"
+
+using namespace pico_ecs_cpp;
+
+// creating a component
+struct Transform
+{
+    int x = 0, y = 0;
+};
+
+// creating a system using a macro
+PICO_ECS_CPP_SYSTEM_FUNCTION(ComponentPrintSystem)
+{
+    // getting the current ecs instance
+    EcsInstance* instance = static_cast<EcsInstance*>(udata);
+    
+    // checking if the instance is valid
+    if (instance)
+    {
+        // iterating over the entities with components
+        // required by the system
+        for (int i = 0; i < entity_count; ++i)
+        {
+            // getting the instance of the component
+            Transform* tr = instance->EntityGetComponent<Transform>(entities[i]);
+
+            std::cout << tr->x << " - " << tr->y << '\n';
+        }
+        return 0;
+    }
+    return 1;
+}
+
+int main()
+{
+    // setting a custom callback that will be called when errors occur
+    PicoEcsCppErrorHandler = [](StatusCode code, const std::string& msg)
+        {
+            std::cerr << "This is a custom callback function\n";
+            std::cerr << "Error Type: " << GetStatusMessage(code) << 
+            "\nError Message: " << msg << '\n';
+        };
+
+    // creating an ecs instance
+    EcsInstance ecs;
+
+    // initializing the instance with entity count (entity pool size)
+    ecs.Init(100);
+
+    // registering the component
+    ecs.ComponentRegister<Transform>();
+
+    // registering the system
+    // ComponentPrintSystemName is a system name generated with the macro
+    ecs.SystemRegister(ComponentPrintSystemName, ComponentPrintSystem);
+
+    // setting required component for the system
+    ecs.SystemRequire<Transform>(ComponentPrintSystemName);
+
+    // creating an entity
+    EntityId e1 = ecs.EntityCreate();
+
+    // adding a component to the entity
+    ecs1.EntityAddComponent<Transform>(e1);
+
+    // updating the system
+    ecs.Update();
+}
+```
+
 ## License
 
 This wrapper is licensed under CC0 / Public domain.
+See the license for `pico_ecs` library [here](https://github.com/empyreanx/pico_headers/blob/fcdc26d0d5955ba57917628e1dd24970957176b9/pico_ecs.h#L1500).
