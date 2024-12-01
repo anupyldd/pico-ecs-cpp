@@ -75,44 +75,44 @@ namespace pico_ecs_cpp
 
     // aliases --------------------------------------------------------------
 
-    using Ecs						= ecs_t;
-    using ReturnCode				= ecs_ret_t;
-    using EcsDt						= ecs_dt_t;
+    using Ecs                       = ecs_t;
+    using ReturnCode                = ecs_ret_t;
+    using EcsDt                     = ecs_dt_t;
     
-    using EcsId						= ecs_id_t;
-    using EntityId					= ecs_id_t;
-    using ComponentId				= ecs_id_t;
-    using SystemId					= ecs_id_t;
+    using EcsId                     = ecs_id_t;
+    using EntityId                  = ecs_id_t;
+    using ComponentId               = ecs_id_t;
+    using SystemId                  = ecs_id_t;
 
-    using ComponentCtor				= ecs_constructor_fn;
-    using ComponentDtor				= ecs_destructor_fn;
+    using ComponentCtor             = ecs_constructor_fn;
+    using ComponentDtor             = ecs_destructor_fn;
     
-    using SystemFunc				= ecs_system_fn;
-    using SystemAddedCb				= ecs_added_fn;
-    using SystemRemovedCb			= ecs_removed_fn;
+    using SystemFunc                = ecs_system_fn;
+    using SystemAddedCb             = ecs_added_fn;
+    using SystemRemovedCb           = ecs_removed_fn;
 }
 
 #if defined(PICO_ECS_CPP_ERRORS_USE_EXCEPTIONS)
 
     #include <exception>
     #include <sstream>
-    #define	PICO_ECS_CPP_ERROR(code, msg)				\
-            do											\
-            {											\
-                std::stringstream sstr;					\
-                sstr << '[' << code << "]: " << msg;	\
-                throw std::runtime_error(sstr.str());	\
-            }											\
+    #define	PICO_ECS_CPP_ERROR(code, msg)               \
+            do                                          \
+            {                                           \
+                std::stringstream sstr;                 \
+                sstr << '[' << code << "]: " << msg;    \
+                throw std::runtime_error(sstr.str());   \
+            }                                           \
             while(0)
 
 #elif defined(PICO_ECS_CPP_ERROR_USE_STD_ERR)
     
     #include <iostream>
-    #define	PICO_ECS_CPP_ERROR(code, msg)												\
-            do																			\
-            {																			\
-                std::cerr << "[PICO_ECS_CPP][" << code << "] " << msg << '\n';			\
-            }																			\
+    #define	PICO_ECS_CPP_ERROR(code, msg)                                               \
+            do                                                                          \
+            {                                                                           \
+                std::cerr << "[PICO_ECS_CPP][" << code << "] " << msg << '\n';          \
+            }                                                                           \
             while(0)
 
 #elif defined(PICO_ECS_CPP_ERROR_USE_CALLBACK)
@@ -124,11 +124,11 @@ namespace pico_ecs_cpp
         [](pico_ecs_cpp::StatusCode code, const std::string& msg)
         { std::cerr << "[PICO_ECS_CPP][" << pico_ecs_cpp::GetStatusMessage(code) << "] " << msg << '\n'; };
                                                                                             
-    #define PICO_ECS_CPP_ERROR(code, msg)														\
-            do																					\
-            {																					\
-                PicoEcsCppErrorHandler(code, msg);												\
-            }																					\
+    #define PICO_ECS_CPP_ERROR(code, msg)                                                       \
+            do                                                                                  \
+            {                                                                                   \
+                PicoEcsCppErrorHandler(code, msg);                                              \
+            }                                                                                   \
             while(0)
 
 #else
@@ -160,12 +160,12 @@ creates a constructor that accepts an object of type CompName and
 copies its contents into the component.
 adds "Constructor" to the name
 */
-#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(CtorName)										\
-    pico_ecs_cpp::ComponentCtor CtorName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)					\
-    {																							\
-        CtorName* comp = static_cast<CtorName*>(ptr);											\
-        CtorName* init = static_cast<CtorName*>(args);											\
-        if(init) (*comp) = (*init);																\
+#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(CtorName)										                    \
+    pico_ecs_cpp::ComponentCtor CtorName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)   \
+    {																							                    \
+        CtorName* comp = static_cast<CtorName*>(ptr);											                    \
+        CtorName* init = static_cast<CtorName*>(args);											                    \
+        if(init) (*comp) = (*init);																                    \
     }
 
 // does not include function body
