@@ -92,7 +92,7 @@ namespace pico_ecs_cpp
     using SystemRemovedCb           = ecs_removed_fn;
 }
 
-#if defined(PICO_ECS_CPP_ERRORS_USE_EXCEPTIONS)
+#if defined(PICO_ECS_CPP_ERROR_USE_EXCEPTIONS)
 
     #include <exception>
     #include <sstream>

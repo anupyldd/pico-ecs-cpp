@@ -8,7 +8,7 @@ Each `EcsInstance` holds its own set of component and system IDs, stored in maps
 
 You can configure the error-handling mechanism by defining an appropriate macro *before* including the header. The available options are:
 
-- **`PICO_ECS_CPP_ERRORS_USE_EXCEPTIONS`**  
+- **`PICO_ECS_CPP_ERROR_USE_EXCEPTIONS`**  
   Use C++ exceptions (`std::runtime_error`) for error handling.
 
 - **`PICO_ECS_CPP_ERROR_USE_STD_ERR`**  
