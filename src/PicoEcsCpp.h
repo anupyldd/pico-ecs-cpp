@@ -316,7 +316,7 @@ namespace pico_ecs_cpp
 		if (components.find(typeid(CompType)) != components.end())
 		{
 			PICO_ECS_CPP_ERROR(StatusCode::CompExists, 
-				FormatString("Component %s is already registered", typeid(CompType).name()));
+				FormatString("Component [%s] is already registered", typeid(CompType).name()));
 			return StatusCode::CompExists;
 		}
 
@@ -336,13 +336,13 @@ namespace pico_ecs_cpp
 		if (systems.find(sysName) == systems.end())
 		{
 			PICO_ECS_CPP_ERROR(StatusCode::SysNotReg,
-				FormatString("Name %s is not associated with any registered system", sysName));
+				FormatString("Name [%s] is not associated with any registered system", sysName));
 			return StatusCode::SysNotReg;
 		}
 		if (components.find(typeid(CompType)) == components.end())
 		{
 			PICO_ECS_CPP_ERROR(StatusCode::CompNotReg,
-				FormatString("Component of type %s is not registered", typeid(CompType).name()));
+				FormatString("Component of type [%s] is not registered", typeid(CompType).name()));
 			return StatusCode::CompNotReg;
 		}
 
@@ -356,13 +356,13 @@ namespace pico_ecs_cpp
 		if (systems.find(sysName) == systems.end())
 		{
 			PICO_ECS_CPP_ERROR(StatusCode::SysNotReg,
-				FormatString("Name %s is not associated with any registered system", sysName));
+				FormatString("Name [%s] is not associated with any registered system", sysName));
 			return StatusCode::SysNotReg;
 		}
 		if (components.find(typeid(CompType)) == components.end())
 		{
 			PICO_ECS_CPP_ERROR(StatusCode::CompNotReg,
-				FormatString("Component of type %s is not registered", typeid(CompType).name()));
+				FormatString("Component of type [%s] is not registered", typeid(CompType).name()));
 			return StatusCode::CompNotReg;
 		}
 
@@ -375,7 +375,7 @@ namespace pico_ecs_cpp
 		if (systems.find(name) != systems.end())
 		{
 			PICO_ECS_CPP_ERROR(StatusCode::SysExists,
-				FormatString("System %s is already registered", name));
+				FormatString("System [%s] is already registered", name));
 			return StatusCode::SysExists;
 		}
 
@@ -413,7 +413,7 @@ namespace pico_ecs_cpp
 		if (!compPtr)
 		{
 			PICO_ECS_CPP_ERROR(StatusCode::CompGetFail,
-				FormatString("Failed to get component of type %s from entity %i", typeid(CompType).name(), id));
+				FormatString("Failed to get component of type [%s] from entity [%i]", typeid(CompType).name(), id));
 			return nullptr;
 		}
 		return compPtr;
