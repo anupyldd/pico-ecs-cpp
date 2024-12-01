@@ -21,3 +21,7 @@ You can configure the error-handling mechanism by defining an appropriate macro 
   Disables the internal error-handling mechanism. In this mode, no error logging or handling is performed by the library.
 
 Regardless of the selected error-handling option, __most methods return status codes__, so you can always rely on them for error handling if you choose to disable other mechanisms.
+
+## License
+
+This wrapper is licensed under CC0 / Public domain.

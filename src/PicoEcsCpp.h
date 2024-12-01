@@ -218,34 +218,40 @@ namespace pico_ecs_cpp
 		template<typename CompType>
 		bool EntityHasComponent(EntityId id);
 
+		// gets a pointer to the instance of specified component held by the entity
 		template<typename CompType>
 		CompType* EntityGetComponent(EntityId id);
 
+		template<typename CompType>
+		StatusCode EntityAddComponent(EntityId id, void* args);
+
 	public:
 
-		// register a single component with optional constructor and destructor
+		// registers a single component with optional constructor and destructor
 		template<typename CompType>
 		StatusCode ComponentRegister(ComponentCtor ctor = nullptr, ComponentDtor dtor = nullptr);
 
-		template<typename CompType>
-		CompType* GetComponent(EntityId id);
-
 	public:
 
+		// registers a system with optional added/removed callbacks
 		StatusCode SystemRegister(
 			const std::string& name,
 			SystemFunc func, 
 			SystemAddedCb add = nullptr, 
 			SystemRemovedCb rem = nullptr);
 
+		// determines which components are available to the specified system
 		template<typename CompType>
 		StatusCode SystemRequire(const std::string& sysName);
 
+		// excludes entities that have specified component from the system
 		template<typename CompType>
 		StatusCode SystemExclude(const std::string& sysName);
 
+		// enables a system
 		StatusCode SystemEnable(const std::string& sysName);
 
+		// disables a system
 		StatusCode SystemDisable(const std::string& sysName);
 
 	private:
@@ -326,12 +332,6 @@ namespace pico_ecs_cpp
 
 		components[typeid(CompType)] = ecs_register_component(instance, sizeof(CompType), ctor, dtor);
 		return StatusCode::Success;
-	}
-	
-	template<typename CompType>
-	inline CompType* EcsInstance::GetComponent(EntityId id)
-	{
-		return static_cast<CompType*>(ecs_get(instance, id, typeid(CompType)));	
 	}
 
 	inline StatusCode EcsInstance::SystemRegister(const std::string& name, SystemFunc func, SystemAddedCb add, SystemRemovedCb rem)
@@ -447,5 +447,20 @@ namespace pico_ecs_cpp
 			return nullptr;
 		}
 		return compPtr;
+	}
+
+	template<typename CompType>
+	inline StatusCode EcsInstance::EntityAddComponent(EntityId id, void* args)
+	{
+		if (components.find(typeid(CompType)) == components.end())
+		{
+			PICO_ECS_CPP_ERROR(StatusCode::CompNotReg,
+				FormatString("Component of type [%s] is not registered", typeid(CompType).name()));
+			return StatusCode::CompNotReg;
+		}
+
+		ecs_add(instance, id, components.at(typeid(CompType)), args);
+
+		return StatusCode::Success;
 	}
 }

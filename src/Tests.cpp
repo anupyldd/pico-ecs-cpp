@@ -181,6 +181,28 @@ int main()
 	assert(ecs2.SystemDisable(UnregisteredSystemName) == StatusCode::SysNotReg);
 
 	/*
+	* should be silent
+	*/
+	Test("Entity creation/destruction");
+	Instance(1);
+	EntityId e1 = ecs1.EntityCreate();
+	EntityId e2 = ecs1.EntityCreate();
+	EntityId e3 = ecs1.EntityCreate();
+	assert(ecs1.EntityIsReady(e1) && ecs1.EntityIsReady(e2) && ecs1.EntityIsReady(e3));
+
+	ecs1.EntityDestroy(e1);
+	assert(!ecs1.EntityIsReady(e1));
+
+	e1 = ecs1.EntityCreate();
+	assert(ecs1.EntityIsReady(e1));
+
+	Instance(2);
+	for (size_t i = 0; i < 10; ++i)
+	{
+		ecs2.EntityCreate();
+	}
+
+	/*
 	* should print values of all entities and 
 	*/
 	Test("System update");
