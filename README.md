@@ -60,6 +60,7 @@ struct Transform
 };
 
 // creating a system using a macro
+const std::string componentPrintSystemName("ComponentPrintSystem");
 PICO_ECS_CPP_SYSTEM_FUNCTION(ComponentPrintSystem)
 {
     // getting the current ecs instance
@@ -102,8 +103,7 @@ int main()
     ecs.ComponentRegister<Transform>();
 
     // registering the system
-    // ComponentPrintSystemName is a system name generated with the macro
-    ecs.SystemRegister(ComponentPrintSystemName, ComponentPrintSystem);
+    ecs.SystemRegister(componentPrintSystemName, ComponentPrintSystem);
 
     // setting required component for the system
     ecs.SystemRequire<Transform>(ComponentPrintSystemName);
