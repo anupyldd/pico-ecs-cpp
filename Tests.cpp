@@ -4,7 +4,7 @@
 #define PICO_ECS_CPP_ERROR_USE_CALLBACK
 #define PICO_ECS_CPP_SHORTHAND_MACROS
 
-#include "PicoEcsCpp.h"
+#include "src/PicoEcsCpp.h"
 
 #include <iostream>
 #include <string>
