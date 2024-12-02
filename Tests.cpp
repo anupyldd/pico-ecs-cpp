@@ -48,6 +48,7 @@ struct UnregisteredComp { };
 // systems ------------------------------------------------
 
 // requires all components, excludes none
+const std::string componentPrintSystemName("ComponentPrintSystem");
 PICO_ECS_CPP_SYSTEM_FUNCTION(ComponentPrintSystem)
 {
 	EcsInstance* instance = static_cast<EcsInstance*>(udata);
@@ -59,12 +60,12 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(ComponentPrintSystem)
 			Velocity* vel = instance->EntityGetComponent<Velocity>(entities[i]);
 			Name* name = instance->EntityGetComponent<Name>(entities[i]);
 
-			float	trX = tr->x, 
-					trY = tr->y,
-					velX = vel->x,
-					velY = vel->y;
+			float	trX = tr->x,
+				trY = tr->y,
+				velX = vel->x,
+				velY = vel->y;
 			std::string nm = name->name;
-			
+
 			std::cout << FormatString("- Entity %i:\nTransform: %f, %f\nVelocity: %f, %f\nName: %s\n",
 				entities[i], trX, trY, velX, velY, nm.c_str());
 		}
@@ -74,6 +75,7 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(ComponentPrintSystem)
 };
 
 // requires velocity and transform, excludes name
+const std::string moveSystemName("MoveSystem");
 PICO_ECS_CPP_SYSTEM_FUNCTION(MoveSystem)
 {
 	EcsInstance* instance = static_cast<EcsInstance*>(udata);
@@ -97,6 +99,7 @@ PICO_ECS_CPP_SYSTEM_FUNCTION(MoveSystem)
 	return 1;
 }
 
+const std::string unregisteredSystemName("UnregisteredSystem");
 PICO_ECS_CPP_SYSTEM_FUNCTION(UnregisteredSystem)
 {
 	return 0;
@@ -108,7 +111,7 @@ int main()
 {
 	PicoEcsCppErrorHandler = [](StatusCode code, const std::string& msg)
 		{
-			if (code != StatusCode::Success) 
+			if (code != StatusCode::Success)
 				std::cerr << '[' << GetStatusMessage(code) << "] " << msg << '\n';
 		};
 
@@ -125,7 +128,7 @@ int main()
 	Instance(1);
 	assert(ecs1.Init(-1) == StatusCode::InitFail);
 	assert(ecs1.Init(100) == StatusCode::Success);
-	
+
 	Instance(2);
 	assert(ecs2.Init(200) == StatusCode::Success);
 
@@ -139,7 +142,7 @@ int main()
 	assert(ecs1.ComponentRegister<Transform>(TransformConstructor) == StatusCode::CompExists);
 	assert(ecs1.ComponentRegister<Velocity>(VelocityConstructor) == StatusCode::Success);
 	assert(ecs1.ComponentRegister<Name>(NameConstructor) == StatusCode::Success);
-	
+
 	Instance(2);
 	assert(ecs2.ComponentRegister<Name>(NameConstructor) == StatusCode::Success);
 	assert(ecs2.ComponentRegister<Transform>(TransformConstructor) == StatusCode::Success);
@@ -151,11 +154,11 @@ int main()
 	*/
 	Test("System registration");
 	Instance(1);
-	assert(ecs1.SystemRegister(ComponentPrintSystemName, ComponentPrintSystem) == StatusCode::Success);
-	assert(ecs1.SystemRegister(ComponentPrintSystemName, ComponentPrintSystem) == StatusCode::SysExists);
+	assert(ecs1.SystemRegister(componentPrintSystemName, ComponentPrintSystem) == StatusCode::Success);
+	assert(ecs1.SystemRegister(componentPrintSystemName, ComponentPrintSystem) == StatusCode::SysExists);
 
 	Instance(2);
-	assert(ecs2.SystemRegister(MoveSystemName, MoveSystem) == StatusCode::Success);
+	assert(ecs2.SystemRegister(moveSystemName, MoveSystem) == StatusCode::Success);
 
 	/*
 	* should output 4 errors: when trying to require/exclude unregistered component
@@ -163,37 +166,37 @@ int main()
 	*/
 	Test("System component require/exclude");
 	Instance(1);
-	assert(ecs1.SystemRequire<Transform>(ComponentPrintSystemName) == StatusCode::Success);
-	assert(ecs1.SystemRequire<Velocity>(ComponentPrintSystemName) == StatusCode::Success);
-	assert(ecs1.SystemRequire<Name>(ComponentPrintSystemName) == StatusCode::Success);
+	assert(ecs1.SystemRequire<Transform>(componentPrintSystemName) == StatusCode::Success);
+	assert(ecs1.SystemRequire<Velocity>(componentPrintSystemName) == StatusCode::Success);
+	assert(ecs1.SystemRequire<Name>(componentPrintSystemName) == StatusCode::Success);
 
-	assert(ecs1.SystemRequire<UnregisteredComp>(ComponentPrintSystemName) == StatusCode::CompNotReg);
-	assert(ecs1.SystemRequire<Velocity>(UnregisteredSystemName) == StatusCode::SysNotReg);
-	
+	assert(ecs1.SystemRequire<UnregisteredComp>(componentPrintSystemName) == StatusCode::CompNotReg);
+	assert(ecs1.SystemRequire<Velocity>(unregisteredSystemName) == StatusCode::SysNotReg);
+
 	Instance(2);
-	assert(ecs2.SystemRequire<Transform>(MoveSystemName) == StatusCode::Success);
-	assert(ecs2.SystemRequire<Velocity>(MoveSystemName) == StatusCode::Success);
+	assert(ecs2.SystemRequire<Transform>(moveSystemName) == StatusCode::Success);
+	assert(ecs2.SystemRequire<Velocity>(moveSystemName) == StatusCode::Success);
 
-	assert(ecs2.SystemExclude<Name>(MoveSystemName) == StatusCode::Success);
+	assert(ecs2.SystemExclude<Name>(moveSystemName) == StatusCode::Success);
 
-	assert(ecs2.SystemExclude<Name>(UnregisteredSystemName) == StatusCode::SysNotReg);
-	assert(ecs2.SystemExclude<UnregisteredComp>(MoveSystemName) == StatusCode::CompNotReg);
+	assert(ecs2.SystemExclude<Name>(unregisteredSystemName) == StatusCode::SysNotReg);
+	assert(ecs2.SystemExclude<UnregisteredComp>(moveSystemName) == StatusCode::CompNotReg);
 
 	/*
 	* should print 2 errors when trying to enable/disable unregistered system
 	*/
 	Test("System enable/disable");
 	Instance(1);
-	assert(ecs1.SystemDisable(ComponentPrintSystemName) == StatusCode::Success);
-	assert(ecs1.SystemEnable(ComponentPrintSystemName) == StatusCode::Success);
+	assert(ecs1.SystemDisable(componentPrintSystemName) == StatusCode::Success);
+	assert(ecs1.SystemEnable(componentPrintSystemName) == StatusCode::Success);
 
-	assert(ecs1.SystemEnable(UnregisteredSystemName) == StatusCode::SysNotReg);
+	assert(ecs1.SystemEnable(unregisteredSystemName) == StatusCode::SysNotReg);
 
 	Instance(2);
-	assert(ecs2.SystemDisable(MoveSystemName) == StatusCode::Success);
-	assert(ecs2.SystemEnable(MoveSystemName) == StatusCode::Success);
-			  
-	assert(ecs2.SystemDisable(UnregisteredSystemName) == StatusCode::SysNotReg);
+	assert(ecs2.SystemDisable(moveSystemName) == StatusCode::Success);
+	assert(ecs2.SystemEnable(moveSystemName) == StatusCode::Success);
+
+	assert(ecs2.SystemDisable(unregisteredSystemName) == StatusCode::SysNotReg);
 
 	/*
 	* should be silent
@@ -247,7 +250,7 @@ int main()
 	assert(ecs1.EntityAddComponent<Transform>(e3, &tr3));
 	assert(ecs1.EntityAddComponent<Velocity>(e3, &vel3));
 	assert(ecs1.EntityAddComponent<Name>(e3, &nm3));
-	
+
 	assert(ecs1.EntityRemoveComponent<Transform>(e3) == StatusCode::Success);
 
 	Instance(2);
