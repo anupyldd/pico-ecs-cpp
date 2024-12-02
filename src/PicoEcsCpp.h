@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <functional>
 #include <string>
+#include <memory>
 
 // error handling -----------------------------------------------------
 
@@ -61,7 +62,7 @@ namespace pico_ecs_cpp
     }
 
     template<typename ... Args>
-    std::string FormatString(const std::string& format, Args ... args)
+    inline std::string FormatString(const std::string& format, Args ... args)
     {
         int size_s = std::snprintf(nullptr, 0, format.c_str(), args ...) + 1; 
         if (size_s > 0)
@@ -288,7 +289,7 @@ namespace pico_ecs_cpp
 
     inline EcsInstance::~EcsInstance()
     {
-        if(ecs_is_not_null(instance)) Destroy();
+        if(instance) Destroy();
     }
 
     inline StatusCode EcsInstance::Init(int entityCount)
