@@ -171,7 +171,6 @@ adds "Constructor" to the name
 
 // does not include function body
 #define PICO_ECS_CPP_SYSTEM_FUNCTION(FuncName)									\
-    const std::string FuncName##Name(#FuncName);								\
     ecs_ret_t FuncName(ecs_t* ecs, ecs_id_t* entities, int entity_count, ecs_dt_t dt, void* udata)
 
 #endif
