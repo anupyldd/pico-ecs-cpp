@@ -106,7 +106,7 @@ int main()
     ecs.SystemRegister(componentPrintSystemName, ComponentPrintSystem);
 
     // setting required component for the system
-    ecs.SystemRequire<Transform>(ComponentPrintSystemName);
+    ecs.SystemRequire<Transform>(componentPrintSystemName);
 
     // creating an entity
     EntityId e1 = ecs.EntityCreate();
