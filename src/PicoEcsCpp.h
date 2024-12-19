@@ -161,12 +161,12 @@ creates a constructor that accepts an object of type CompName and
 copies its contents into the component.
 adds "Constructor" to the name
 */
-#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(CtorName)										                    \
-    pico_ecs_cpp::ComponentCtor CtorName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)   \
-    {																							                    \
-        CtorName* comp = static_cast<CtorName*>(ptr);											                    \
-        CtorName* init = static_cast<CtorName*>(args);											                    \
-        if(init) (*comp) = (*init);																                    \
+#define PICO_ECS_CPP_COMPONENT_CONSTRUCTOR_COPY(CtorName)										                           \
+    inline pico_ecs_cpp::ComponentCtor CtorName##Constructor = [](ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args)   \
+    {																							                           \
+        CtorName* comp = static_cast<CtorName*>(ptr);											                           \
+        CtorName* init = static_cast<CtorName*>(args);											                           \
+        if(init) (*comp) = (*init);																                           \
     }
 
 // does not include function body

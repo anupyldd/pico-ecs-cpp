@@ -2,7 +2,7 @@
 
 project(pico_ecs_cpp LANGUAGES CXX C)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ####################################################
@@ -38,7 +38,7 @@ target_include_directories(
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET pico_ecs_cpp PROPERTY CXX_STANDARD 11)
+  set_property(TARGET pico_ecs_cpp PROPERTY CXX_STANDARD 17)
 endif()
 
 add_compile_options(/utf-8)
