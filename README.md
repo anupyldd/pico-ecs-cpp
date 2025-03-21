@@ -125,5 +125,5 @@ int main()
 
 ## License
 
-This wrapper is licensed under CC0 / Public domain.
+This wrapper is released into the public domain.
 See the license for `pico_ecs` library [here](https://github.com/empyreanx/pico_headers/blob/fcdc26d0d5955ba57917628e1dd24970957176b9/pico_ecs.h#L1500).
